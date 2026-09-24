@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vulntracker
+spec:
+  replicas: 2
+
+  selector:
+    matchLabels:
+      app: vulntracker
+
+  template:
+    metadata:
+      labels:
+        app: vulntracker
+
+    spec:
+      serviceAccountName: vulntracker
+
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        - name: vulntracker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+
+          ports:
+            - containerPort: 8000
+
+          envFrom:
+            - secretRef:
+                name: {{ .Values.secrets.name }}
+
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000

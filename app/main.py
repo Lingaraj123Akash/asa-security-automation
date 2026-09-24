@@ -1,7 +1,9 @@
+import secrets
 import logging
 import traceback
 from datetime import datetime
 from typing import List, Optional
+from datetime import datetime, timedelta, timezone
 
 import httpx
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request, status
@@ -279,3 +281,46 @@ def delete_scan(
 @app.get("/health")
 def health():
     return {"status": "ok", "service": "vulntracker-api"}
+@app.get("/share/{token}")
+def get_shared_scan(token: str):
+
+    # 1. Find the share using the token
+    share = get_share_by_token(token)
+
+    # 2. Invalid token
+    if not share:
+        raise HTTPException(
+            status_code=404,
+            detail="Share link not found or expired"
+        )
+
+    # 3. Check expiration
+    if share.expires_at <= datetime.now(timezone.utc):
+        raise HTTPException(
+            status_code=404,
+            detail="Share link not found or expired"
+        )
+
+    # 4. Check password if configured
+    # We will implement this in the password task
+
+    # 5. Load the scan
+    scan = get_scan(share.scan_id)
+
+    if not scan:
+        raise HTTPException(
+            status_code=404,
+            detail="Share link not found or expired"
+        )
+
+    # 6. Return scan information
+    return {
+    "id": scan.id,
+    "title": scan.title,
+    "status": scan.status,
+    "findings": scan.findings
+}
+@app.get("/share/{token}")
+def get_shared_scan(token: str):
+    print("hello")
+    return {"token": token}
